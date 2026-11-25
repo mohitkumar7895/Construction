@@ -9,6 +9,24 @@ function isLocalHost(host: string): boolean {
   return h === 'localhost' || h === '127.0.0.1' || h === '::1';
 }
 
+function isSslRequiredCloudHost(host: string): boolean {
+  const h = host.trim().toLowerCase();
+  return (
+    h.includes('tidbcloud.com') ||
+    h.includes('aivencloud.com') ||
+    h.includes('psdb.cloud') ||
+    h.includes('rds.amazonaws.com') ||
+    h.includes('ondigitalocean.com') ||
+    h.includes('azure.com') ||
+    h.includes('filess.io')
+  );
+}
+
+function cleanEnv(val: string | undefined, fallback = ''): string {
+  if (!val) return fallback;
+  return val.trim().replace(/^['"]|['"]$/g, '');
+}
+
 export function getDbConnectionConfig(): {
   host: string;
   port: number;
@@ -18,7 +36,7 @@ export function getDbConnectionConfig(): {
   sslEnabled: boolean;
   isConfiguredForRemote: boolean;
 } {
-  const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
+  const databaseUrl = cleanEnv(process.env.DATABASE_URL || process.env.MYSQL_URL);
 
   if (databaseUrl) {
     try {
@@ -27,11 +45,12 @@ export function getDbConnectionConfig(): {
       const port = Number(parsed.port || 3306);
       const user = decodeURIComponent(parsed.username || 'root');
       const password = decodeURIComponent(parsed.password || '');
-      const database = parsed.pathname.replace(/^\/+/, '') || process.env.DB_NAME || 'construction';
+      const database = parsed.pathname.replace(/^\/+/, '') || cleanEnv(process.env.DB_NAME, 'construction');
       const sslParam = parsed.searchParams.get('ssl-mode') || parsed.searchParams.get('ssl');
       const explicitDisable =
         process.env.DB_SSL === 'false' || sslParam?.toLowerCase() === 'disabled' || sslParam === 'false';
-      const sslEnabled = !explicitDisable && (!isLocalHost(host) || process.env.DB_SSL === 'true' || Boolean(sslParam));
+      const explicitEnable = process.env.DB_SSL === 'true' || Boolean(sslParam);
+      const sslEnabled = !explicitDisable && (explicitEnable || isSslRequiredCloudHost(host));
 
       return {
         host,
@@ -47,14 +66,15 @@ export function getDbConnectionConfig(): {
     }
   }
 
-  const host = process.env.DB_HOST || 'localhost';
-  const port = Number(process.env.DB_PORT || 3306);
-  const user = process.env.DB_USER || 'root';
-  const password = process.env.DB_PASSWORD || '';
-  const database = process.env.DB_NAME || 'construction';
+  const host = cleanEnv(process.env.DB_HOST, 'localhost');
+  const port = Number(cleanEnv(process.env.DB_PORT, '3306')) || 3306;
+  const user = cleanEnv(process.env.DB_USER, 'root');
+  const password = (process.env.DB_PASSWORD ?? '').replace(/^['"]|['"]$/g, '');
+  const database = cleanEnv(process.env.DB_NAME, 'construction');
 
   const explicitDisable = process.env.DB_SSL === 'false';
-  const sslEnabled = !explicitDisable && (!isLocalHost(host) || process.env.DB_SSL === 'true');
+  const explicitEnable = process.env.DB_SSL === 'true';
+  const sslEnabled = !explicitDisable && (explicitEnable || isSslRequiredCloudHost(host));
 
   return {
     host,
@@ -188,7 +208,8 @@ export function diagnoseDbError(error: unknown): {
     return {
       status: 503,
       code,
-      message: 'MySQL authentication failed. Verify DB_USER and DB_PASSWORD environment variables.',
+      message:
+        'MySQL authentication failed (ER_ACCESS_DENIED_ERROR). On Hostinger: enable Remote MySQL for Any Host (%) on this database, verify full prefixed DB_USER & DB_PASSWORD (prefer separate DB_* vars over DATABASE_URL if password has @/#/% symbols), and redeploy.',
     };
   }
 
