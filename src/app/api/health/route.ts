@@ -41,15 +41,22 @@ export async function GET() {
     });
   } catch (error) {
     const diag = diagnoseDbError(error);
+    const rawMsg = String((error as { sqlMessage?: string; message?: string })?.sqlMessage || (error as { message?: string })?.message || '');
+    const safeMysqlDetail = rawMsg.replace(/password\s*=\s*\S+/gi, 'password=***').slice(0, 220);
     return NextResponse.json(
       {
         ok: false,
         database: {
           connected: false,
+          configSource: process.env.DATABASE_URL || process.env.MYSQL_URL ? 'DATABASE_URL' : 'DB_*',
           hostType: cfg.isConfiguredForRemote ? 'remote' : 'local',
           sslEnabled: cfg.sslEnabled,
           databaseName: cfg.database,
+          userPreview: cfg.user ? `${cfg.user.slice(0, 6)}... (len:${cfg.user.length})` : '(empty)',
+          hasPassword: cfg.password.length > 0,
+          passwordLength: cfg.password.length,
           code: diag.code,
+          mysqlDetail: safeMysqlDetail,
           hint: diag.message,
         },
       },
