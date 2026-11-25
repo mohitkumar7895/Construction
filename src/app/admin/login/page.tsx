@@ -324,4 +324,8 @@ export default function AdminLoginPage() {
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Public Website</span>
           </Link>
-        <
+        </div>
+      </div>
+    </div>
+  );
+}
