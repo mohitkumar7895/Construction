@@ -69,7 +69,7 @@ export function getDbConnectionConfig(): {
   const host = cleanEnv(process.env.DB_HOST, 'localhost');
   const port = Number(cleanEnv(process.env.DB_PORT, '3306')) || 3306;
   const user = cleanEnv(process.env.DB_USER, 'root');
-  const password = (process.env.DB_PASSWORD ?? '').replace(/^['"]|['"]$/g, '');
+  const password = cleanEnv(process.env.DB_PASSWORD, '');
   const database = cleanEnv(process.env.DB_NAME, 'construction');
 
   const explicitDisable = process.env.DB_SSL === 'false';
