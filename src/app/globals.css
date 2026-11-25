@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+:root {
+  --brand-primary: #111827;
+  --brand-secondary: #F5B301;
+  --brand-dark: #0B0F14;
+  --brand-light: #F8F9FB;
+  --brand-surface: #FFFFFF;
+  --brand-muted: #64748B;
+  --brand-radius: 0.5rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    color: var(--brand-primary);
+    background-color: var(--brand-light);
+  }
+
+  body {
+    font-family: var(--font-body, 'Inter', system-ui, -apple-system, sans-serif);
+    overflow-x: clip;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading, 'Space Grotesk', system-ui, sans-serif);
+    letter-spacing: -0.025em;
+  }
+}
+
+/* Blueprint Architectural Grid Texture */
+.bg-blueprint-grid {
+  background-image:
+    linear-gradient(to right, rgba(245, 179, 1, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 179, 1, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.bg-blueprint-light {
+  background-image:
+    linear-gradient(to right, rgba(17, 24, 39, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 24, 39, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Native Modal Dialog Scroll Containment & Backdrop */
+dialog:modal {
+  overscroll-behavior: contain;
+  margin: auto;
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: min(94vw, 72rem);
+  max-height: 92vh;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: rgba(11, 15, 20, 0.84);
+  backdrop-filter: blur(8px);
+}
+
+/* Native <details> Accordion Styling & Intrinsic Height Animation */
+.arch-accordion details {
+  border-bottom: 1px solid rgba(100, 116, 139, 0.22);
+}
+
+.arch-accordion summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.35rem 0.25rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.075rem;
+  line-height: 1.45;
+  transition: color 0.2s ease;
+}
+
+.arch-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.arch-accordion summary::before {
+  content: "";
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
+  flex-shrink: 0;
+  background-color: var(--brand-secondary);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat center / contain;
+  rotate: -90deg;
+}
+
+.arch-accordion details[open] > summary::before {
+  rotate: 0deg;
+}
+
+.arch-accordion details::details-content {
+  interpolate-size: allow-keywords;
+  overflow: clip;
+  contain: layout;
+}
+
+.arch-accordion details:not([open])::details-content {
+  block-size: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arch-accordion summary::before {
+    transition: rotate 0.22s ease;
+  }
+
+  .arch-accordion details::details-content {
+    transition: block-size, content-visibility, display;
+    transition-duration: 0.3s;
+    transition-timing-function: ease-in-out;
+    transition-behavior: allow-discrete;
+  }
+}
+
+/* Rich Text Prose */
+.rich-prose h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  color: var(--brand-primary);
+}
+.rich-prose h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 1.4rem;
+  margin-bottom: 0.5rem;
+  color: var(--brand-primary);
+}
+.rich-prose p {
+  margin-bottom: 1rem;
+  line-height: 1.75;
+  color: #334155;
+}
+.rich-prose ul, .rich-prose ol {
+  margin: 0.75rem 0 1.25rem 1.25rem;
+  color: #334155;
+}
+.rich-prose ul { list-style-type: disc; }
+.rich-prose ol { list-style-type: decimal; }
+.rich-prose li { margin-bottom: 0.4rem; line-height: 1.65; }
+.rich-prose a { color: var(--brand-primary); text-decoration: underline; text-underline-offset: 3px; }
+.rich-prose blockquote {
+  border-left: 3px solid var(--brand-secondary);
+  padding-left: 1rem;
+  margin: 1.25rem 0;
+  font-style: italic;
+  color: #475569;
+}
+
+/* Premium Skeleton Shimmer */
+@keyframes archShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: archShimmer 1.6s infinite linear;
+}
