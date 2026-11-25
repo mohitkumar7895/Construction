@@ -18,26 +18,23 @@ export function Footer({ bundle }: { bundle: SiteBundle }) {
         <RevealSection className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 pb-12 border-b border-white/10">
           {/* Brand Column */}
           <div className="lg:col-span-4 space-y-5">
-            <Link href="/" className="inline-flex items-center gap-3">
-              {website.logo_dark_url || website.logo_url ? (
+            <Link href="/" className="inline-flex items-center gap-3.5">
+              <div className="w-16 h-16 rounded-xl bg-white p-1 flex items-center justify-center shadow-lg ring-2 ring-[var(--brand-secondary)]/50 overflow-hidden shrink-0">
                 <img
-                  src={website.logo_dark_url || website.logo_url || ''}
-                  alt={website.site_name}
-                  className="h-10 w-auto object-contain"
+                  src={
+                    website.logo_dark_url && website.logo_dark_url !== '/logo.jpeg'
+                      ? website.logo_dark_url
+                      : website.logo_url && website.logo_url !== '/logo.jpeg'
+                        ? website.logo_url
+                        : '/logo-cropped.png'
+                  }
+                  alt={`${website.site_name} Logo`}
+                  className="w-full h-full object-contain scale-110"
                   loading="lazy"
                 />
-              ) : (
-                <div className="w-11 h-11 rounded-[var(--brand-radius)] bg-[var(--brand-secondary)] text-[#0B0F14] flex items-center justify-center font-extrabold text-lg tracking-tight">
-                  {website.site_name
-                    .split(' ')
-                    .map((w) => w[0])
-                    .join('')
-                    .slice(0, 2)
-                    .toUpperCase()}
-                </div>
-              )}
+              </div>
               <div>
-                <p className="text-lg font-bold text-white leading-tight">{website.site_name}</p>
+                <p className="text-xl font-extrabold text-white leading-tight">{website.site_name}</p>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--brand-secondary)] font-semibold">
                   {company.business_type || 'Construction & Infrastructure'}
                 </p>

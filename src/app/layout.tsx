@@ -30,7 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
     getSeoForEntity('global', 'default'),
   ]);
 
-  return buildPageMetadata({
+  const base = buildPageMetadata({
     seo: globalSeo,
     fallbackTitle: bundle.website.site_name,
     fallbackDescription:
@@ -39,6 +39,19 @@ export async function generateMetadata(): Promise<Metadata> {
     path: '/',
     website: bundle.website,
   });
+
+  const favicon =
+    bundle.website.favicon_url && bundle.website.favicon_url !== '/logo.jpeg'
+      ? bundle.website.favicon_url
+      : '/icon.png';
+  return {
+    ...base,
+    icons: {
+      icon: [{ url: favicon, type: 'image/png' }, { url: '/logo-cropped.png', type: 'image/png' }],
+      shortcut: favicon,
+      apple: '/apple-icon.png',
+    },
+  };
 }
 
 export default async function RootLayout({

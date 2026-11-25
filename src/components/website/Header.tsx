@@ -126,25 +126,20 @@ export function Header({ bundle }: { bundle: SiteBundle }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="h-20 flex items-center justify-between gap-4">
           {/* Dynamic Brand Logo */}
-          <Link href="/" className="flex items-center gap-3 group shrink-0">
-            {website.logo_url ? (
+          <Link href="/" className="flex items-center gap-3.5 group shrink-0">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-white p-1 flex items-center justify-center shadow-lg ring-2 ring-[var(--brand-secondary)]/60 overflow-hidden group-hover:scale-105 transition-transform">
               <img
-                src={website.logo_url}
-                alt={website.site_name}
-                className="h-10 w-auto object-contain"
+                src={
+                  website.logo_url && website.logo_url !== '/logo.jpeg'
+                    ? website.logo_url
+                    : '/logo-cropped.png'
+                }
+                alt={`${website.site_name} Logo`}
+                className="w-full h-full object-contain scale-110"
               />
-            ) : (
-              <div className="w-10 h-10 rounded-[var(--brand-radius)] bg-[var(--brand-secondary)] text-[#0B0F14] flex items-center justify-center font-extrabold text-lg tracking-tighter shadow-sm group-hover:scale-105 transition-transform">
-                {website.site_name
-                  .split(' ')
-                  .map((w) => w[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase()}
-              </div>
-            )}
+            </div>
             <div className="leading-tight">
-              <span className="block text-base sm:text-lg font-bold tracking-tight text-white">
+              <span className="block text-lg sm:text-xl font-extrabold tracking-tight text-white">
                 {website.site_name}
               </span>
               <span className="block text-[10px] uppercase tracking-[0.2em] text-[var(--brand-secondary)] font-semibold">

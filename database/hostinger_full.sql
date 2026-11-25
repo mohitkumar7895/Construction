@@ -735,12 +735,15 @@ INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 2, id FROM `permissions` WHERE `slug` IN ('dashboard.view', 'content.manage', 'media.manage', 'inquiries.manage', 'seo.manage');
 
 -- 2. Website Settings
-INSERT INTO `website_settings` (`id`, `site_name`, `tagline`, `domain_name`, `header_cta_primary_label`, `header_cta_primary_url`, `header_cta_secondary_label`, `header_cta_secondary_url`, `show_top_bar`, `footer_copyright`)
+INSERT INTO `website_settings` (`id`, `site_name`, `tagline`, `domain_name`, `logo_url`, `logo_dark_url`, `favicon_url`, `header_cta_primary_label`, `header_cta_primary_url`, `header_cta_secondary_label`, `header_cta_secondary_url`, `show_top_bar`, `footer_copyright`)
 VALUES (
   1,
-  'Sartaj Construction',
+  'Taj Construction',
   'Building Your Vision. Creating Your Future.',
   'http://localhost:3000',
+  '/logo.jpeg',
+  '/logo.jpeg',
+  '/logo.jpeg',
   'Get a Quote',
   '/contact',
   'Inquire Now',
@@ -748,7 +751,7 @@ VALUES (
   1,
   'All rights reserved.'
 )
-ON DUPLICATE KEY UPDATE `site_name` = VALUES(`site_name`);
+ON DUPLICATE KEY UPDATE `logo_url` = VALUES(`logo_url`), `logo_dark_url` = VALUES(`logo_dark_url`), `favicon_url` = VALUES(`favicon_url`);
 
 -- 3. Company Profile
 INSERT INTO `company_profiles` (

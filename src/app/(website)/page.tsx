@@ -80,7 +80,7 @@ export default async function HomePage() {
     getPublishedProjects({ limit: 6 }),
     getVisibleStatistics(),
     getProcessSteps(),
-    getGalleryData(6),
+    getGalleryData(),
     getPublishedTestimonials(),
     getPublishedFaqs(),
   ]);
@@ -469,7 +469,11 @@ export default async function HomePage() {
               </Link>
             </RevealSection>
 
-            <GalleryShowcase categories={gallery.categories} images={gallery.images} />
+            <GalleryShowcase
+              categories={gallery.categories}
+              images={gallery.images}
+              initialVisibleCount={16}
+            />
           </div>
         </section>
       )}

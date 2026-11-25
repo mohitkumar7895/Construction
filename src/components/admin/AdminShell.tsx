@@ -233,11 +233,11 @@ export function AdminShell({ user }: { user: AdminUserSession }) {
       >
         <div className="h-16 px-5 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[var(--brand-secondary)] text-[#0B0F14] font-extrabold flex items-center justify-center text-sm">
-              SC
+            <div className="w-11 h-11 rounded-lg bg-white p-0.5 flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-[var(--brand-secondary)]/60">
+              <img src="/logo-cropped.png" alt="Taj Construction Logo" className="w-full h-full object-contain scale-110" />
             </div>
             <div className="leading-tight">
-              <p className="text-sm font-bold text-white">Construction CMS</p>
+              <p className="text-sm font-bold text-white">Taj Construction</p>
               <p className="text-[10px] uppercase tracking-wider text-[var(--brand-secondary)]">
                 {user.roleName}
               </p>

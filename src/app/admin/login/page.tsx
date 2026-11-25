@@ -13,7 +13,6 @@ import {
   Lock,
   Mail,
   RefreshCw,
-  ShieldCheck,
   User,
   UserPlus,
 } from 'lucide-react';
@@ -120,8 +119,8 @@ export default function AdminLoginPage() {
 
       <div className="relative w-full max-w-md space-y-4">
         <div className="text-center">
-          <div className="w-14 h-14 rounded-2xl bg-[var(--brand-secondary)] text-[#0B0F14] flex items-center justify-center mx-auto mb-3 shadow-xl">
-            <ShieldCheck className="w-7 h-7" />
+          <div className="w-20 h-20 rounded-2xl bg-white p-1.5 flex items-center justify-center mx-auto mb-3 shadow-xl ring-2 ring-[var(--brand-secondary)]/70 overflow-hidden">
+            <img src="/logo-cropped.png" alt="Taj Construction Logo" className="w-full h-full object-contain scale-110" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin Command Center</h1>
           <p className="mt-1.5 text-sm text-slate-400">
@@ -325,8 +324,4 @@ export default function AdminLoginPage() {
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Public Website</span>
           </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
+        <
