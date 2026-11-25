@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { execute, queryOne } from '@/lib/db';
+import { diagnoseDbError, execute, queryOne } from '@/lib/db';
 import { getClientIp } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { publicContactSchema } from '@/lib/validation';
 import { sendInquiryNotificationEmail } from '@/lib/mailer';
+
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
@@ -73,9 +75,15 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error('Public inquiry submission error:', error);
+    const diag = diagnoseDbError(error);
     return NextResponse.json(
-      { error: 'Unable to submit inquiry right now. Please call or WhatsApp us directly.' },
-      { status: 500 }
+      {
+        error:
+          diag.status === 503
+            ? 'Inquiry service temporarily unavailable while database is being configured. Please call +91 9897300398 or use WhatsApp.'
+            : 'Unable to submit inquiry right now. Please call or WhatsApp us directly.',
+      },
+      { status: diag.status }
     );
   }
 }

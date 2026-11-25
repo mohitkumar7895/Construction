@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { execute, queryOne } from '@/lib/db';
+import { diagnoseDbError, execute, queryOne } from '@/lib/db';
 import {
   createAdminSession,
+  ensureInitialAdminIfEmpty,
   getClientIp,
   logActivity,
   setSessionCookie,
@@ -9,6 +10,8 @@ import {
 } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { loginSchema } from '@/lib/validation';
+
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +24,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON request body' }, { status: 400 });
+    }
+
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -29,6 +38,9 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    // Auto-bootstrap first Super Admin on newly provisioned remote MySQL if env vars exist
+    await ensureInitialAdminIfEmpty();
 
     const { email, password } = parsed.data;
     const user = await queryOne<{
@@ -69,10 +81,12 @@ export async function POST(request: Request) {
     const valid = await verifyPassword(password, user.password_hash);
     if (!valid) {
       const nextAttempts = user.failed_login_attempts + 1;
-      const lockUntil = nextAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
       await execute(
-        `UPDATE admin_users SET failed_login_attempts = ?, locked_until = ? WHERE id = ?`,
-        [nextAttempts, lockUntil, user.id]
+        `UPDATE admin_users
+         SET failed_login_attempts = ?,
+             locked_until = IF(? >= 5, DATE_ADD(NOW(), INTERVAL 15 MINUTE), NULL)
+         WHERE id = ?`,
+        [nextAttempts, nextAttempts, user.id]
       );
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
@@ -107,6 +121,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Authentication service unavailable' }, { status: 500 });
+    const diag = diagnoseDbError(error);
+    return NextResponse.json({ error: diag.message, code: diag.code }, { status: diag.status });
   }
 }

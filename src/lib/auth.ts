@@ -26,6 +26,35 @@ export async function verifyPassword(plain: string, hash: string): Promise<boole
   return bcrypt.compare(plain, hash);
 }
 
+/**
+ * Automatically bootstraps the initial Super Admin when a freshly imported remote MySQL
+ * database has 0 admin_users and ADMIN_EMAIL + ADMIN_INITIAL_PASSWORD are configured in env.
+ */
+export async function ensureInitialAdminIfEmpty(): Promise<void> {
+  const email = process.env.ADMIN_EMAIL?.trim();
+  const initialPassword = process.env.ADMIN_INITIAL_PASSWORD;
+  if (!email || !initialPassword || initialPassword.length < 8) return;
+
+  const row = await queryOne<{ cnt: number }>(
+    `SELECT COUNT(*) AS cnt FROM admin_users WHERE deleted_at IS NULL`
+  );
+  if (row && Number(row.cnt) > 0) return;
+
+  // Ensure Super Admin role exists before inserting
+  await execute(
+    `INSERT IGNORE INTO roles (id, name, slug, description)
+     VALUES (1, 'Super Admin', 'super_admin', 'Full unrestricted access')`
+  );
+
+  const hash = await hashPassword(initialPassword);
+  await execute(
+    `INSERT INTO admin_users (role_id, name, email, password_hash, phone, is_active)
+     VALUES (1, 'Sartaj Hussain', ?, ?, '+91 9897300398', 1)
+     ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), is_active = 1, deleted_at = NULL`,
+    [email, hash]
+  );
+}
+
 export async function createAdminSession(
   adminUserId: number,
   ipAddress: string | null,
@@ -35,14 +64,14 @@ export async function createAdminSession(
   const tokenHash = hashToken(token);
   const expiresAt = new Date(Date.now() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
+  // Use MySQL NOW() + INTERVAL so session expiry always matches database server clock
   await execute(
     `INSERT INTO admin_sessions (admin_user_id, token_hash, ip_address, user_agent, expires_at)
-     VALUES (?, ?, ?, ?, ?)`,
-    [adminUserId, tokenHash, ipAddress, userAgent ? userAgent.slice(0, 490) : null, expiresAt]
+     VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))`,
+    [adminUserId, tokenHash, ipAddress, userAgent ? userAgent.slice(0, 490) : null, SESSION_DURATION_DAYS]
   );
 
-  // Clean up expired sessions periodically
-  await execute(`DELETE FROM admin_sessions WHERE expires_at < NOW()`);
+  await execute(`DELETE FROM admin_sessions WHERE expires_at < NOW()`).catch(() => {});
 
   return { token, expiresAt };
 }

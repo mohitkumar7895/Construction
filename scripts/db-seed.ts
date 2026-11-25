@@ -2,26 +2,33 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import mysql from 'mysql2/promise';
+import { getDbConnectionConfig } from '../src/lib/db';
 
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 dotenv.config();
 
 async function main() {
+  const cfg = getDbConnectionConfig();
   const seedPath = path.join(process.cwd(), 'database', 'seed.sql');
-  const sql = fs.readFileSync(seedPath, 'utf8');
+  let sql = fs.readFileSync(seedPath, 'utf8');
+
+  if (cfg.database && cfg.database !== 'construction') {
+    sql = sql.replace(/USE `construction`;/i, `USE \`${cfg.database}\`;`);
+  }
 
   const conn = await mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'construction',
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database,
     multipleStatements: true,
     charset: 'utf8mb4',
+    ...(cfg.sslEnabled ? { ssl: { rejectUnauthorized: false } } : {}),
   });
 
   try {
-    console.log('Executing database/seed.sql...');
+    console.log(`Executing database/seed.sql on ${cfg.host}/${cfg.database}...`);
     await conn.query(sql);
     console.log('Database seed data applied successfully.');
   } finally {

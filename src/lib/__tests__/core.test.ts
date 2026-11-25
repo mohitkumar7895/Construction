@@ -4,6 +4,7 @@ import { sanitizeRichHtml } from '@/lib/sanitize';
 import { detectFileSignature, sanitizeUploadBaseName } from '@/lib/media';
 import { publicContactSchema, themeSchema, animationSchema } from '@/lib/validation';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { getDbConnectionConfig, diagnoseDbError } from '@/lib/db';
 
 describe('Core Utilities & Security Helpers', () => {
   it('builds clean WhatsApp and tel links for Haldwani client contact', () => {
@@ -94,5 +95,22 @@ describe('Core Utilities & Security Helpers', () => {
     expect(checkRateLimit(key, 2, 60000).allowed).toBe(true);
     expect(checkRateLimit(key, 2, 60000).allowed).toBe(true);
     expect(checkRateLimit(key, 2, 60000).allowed).toBe(false);
+  });
+
+  it('parses DATABASE_URL with automatic SSL for cloud MySQL and diagnoses connection errors', () => {
+    const prevUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = 'mysql://admin:secret@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/construction';
+    const cfg = getDbConnectionConfig();
+    expect(cfg.host).toBe('gateway01.ap-southeast-1.prod.aws.tidbcloud.com');
+    expect(cfg.port).toBe(4000);
+    expect(cfg.database).toBe('construction');
+    expect(cfg.sslEnabled).toBe(true);
+    expect(cfg.isConfiguredForRemote).toBe(true);
+    if (prevUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = prevUrl;
+
+    const diag = diagnoseDbError({ code: 'ER_NO_SUCH_TABLE' });
+    expect(diag.status).toBe(503);
+    expect(diag.message).toContain('schema.sql');
   });
 });

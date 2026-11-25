@@ -100,6 +100,12 @@ export async function processAndStoreUpload(
     throw new Error('Video exceeds maximum allowed size of 50 MB.');
   }
 
+  if (process.env.VERCEL && (process.env.MEDIA_STORAGE || 'local') === 'local') {
+    throw new Error(
+      'Local disk uploads are read-only on Vercel serverless hosting. Deploy on a Node.js VPS or configure persistent cloud object storage for uploads.'
+    );
+  }
+
   const uploadRoot = path.resolve(process.cwd(), process.env.UPLOAD_DIR || './public/uploads');
   const targetDir = path.join(uploadRoot, safeFolder);
   await fs.mkdir(targetDir, { recursive: true });

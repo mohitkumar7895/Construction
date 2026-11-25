@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
+import { apiErrorResponse } from '@/lib/api-error';
+
+export const runtime = 'nodejs';
 
 export async function GET() {
   const { error } = await requireAdmin('dashboard.view');
@@ -77,7 +80,6 @@ export async function GET() {
       recentActivity,
     });
   } catch (err) {
-    console.error('Dashboard stats error:', err);
-    return NextResponse.json({ error: 'Failed to load dashboard data' }, { status: 500 });
+    return apiErrorResponse(err, 'Failed to load dashboard data');
   }
 }

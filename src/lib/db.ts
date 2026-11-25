@@ -1,32 +1,106 @@
-import mysql, { Pool, PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import mysql, { Pool, PoolConnection, PoolOptions, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 declare global {
   var __mysqlPool: Pool | undefined;
 }
 
+function isLocalHost(host: string): boolean {
+  const h = host.trim().toLowerCase();
+  return h === 'localhost' || h === '127.0.0.1' || h === '::1';
+}
+
+export function getDbConnectionConfig(): {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+  sslEnabled: boolean;
+  isConfiguredForRemote: boolean;
+} {
+  const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
+
+  if (databaseUrl) {
+    try {
+      const parsed = new URL(databaseUrl);
+      const host = parsed.hostname || 'localhost';
+      const port = Number(parsed.port || 3306);
+      const user = decodeURIComponent(parsed.username || 'root');
+      const password = decodeURIComponent(parsed.password || '');
+      const database = parsed.pathname.replace(/^\/+/, '') || process.env.DB_NAME || 'construction';
+      const sslParam = parsed.searchParams.get('ssl-mode') || parsed.searchParams.get('ssl');
+      const explicitDisable =
+        process.env.DB_SSL === 'false' || sslParam?.toLowerCase() === 'disabled' || sslParam === 'false';
+      const sslEnabled = !explicitDisable && (!isLocalHost(host) || process.env.DB_SSL === 'true' || Boolean(sslParam));
+
+      return {
+        host,
+        port,
+        user,
+        password,
+        database,
+        sslEnabled,
+        isConfiguredForRemote: !isLocalHost(host),
+      };
+    } catch {
+      // Fallback to individual DB_* variables
+    }
+  }
+
+  const host = process.env.DB_HOST || 'localhost';
+  const port = Number(process.env.DB_PORT || 3306);
+  const user = process.env.DB_USER || 'root';
+  const password = process.env.DB_PASSWORD || '';
+  const database = process.env.DB_NAME || 'construction';
+
+  const explicitDisable = process.env.DB_SSL === 'false';
+  const sslEnabled = !explicitDisable && (!isLocalHost(host) || process.env.DB_SSL === 'true');
+
+  return {
+    host,
+    port,
+    user,
+    password,
+    database,
+    sslEnabled,
+    isConfiguredForRemote: !isLocalHost(host),
+  };
+}
+
 function createPool(): Pool {
-  return mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'construction',
-    waitForConnections: true,
-    connectionLimit: 12,
-    maxIdle: 6,
-    idleTimeout: 60000,
-    queueLimit: 0,
-    charset: 'utf8mb4',
-    dateStrings: true,
-    namedPlaceholders: false,
-  });
+    const cfg = getDbConnectionConfig();
+    const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+    const options: PoolOptions = {
+      host: cfg.host,
+      port: cfg.port,
+      user: cfg.user,
+      password: cfg.password,
+      database: cfg.database,
+      waitForConnections: true,
+      connectionLimit: isServerless ? 5 : 12,
+      maxIdle: isServerless ? 2 : 6,
+      idleTimeout: 30000,
+      connectTimeout: 10000,
+      queueLimit: 0,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000,
+      charset: 'utf8mb4',
+      dateStrings: true,
+      namedPlaceholders: false,
+};
+
+if (cfg.sslEnabled) {
+  options.ssl = process.env.DB_SSL_CA
+    ? { ca: process.env.DB_SSL_CA.replace(/\\n/g, '\n'), rejectUnauthorized: true }
+    : { rejectUnauthorized: false };
+}
+
+return mysql.createPool(options);
 }
 
 export const db: Pool = global.__mysqlPool ?? createPool();
-
-if (process.env.NODE_ENV !== 'production') {
-  global.__mysqlPool = db;
-}
+global.__mysqlPool = db;
 
 export async function query<T = RowDataPacket>(
   sql: string,
@@ -76,4 +150,77 @@ export async function checkDatabaseConnection(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export function diagnoseDbError(error: unknown): {
+  status: number;
+  message: string;
+  code: string;
+} {
+  const err = error as { code?: string; errno?: number; message?: string } | null;
+  const code = err?.code || 'UNKNOWN';
+  const cfg = getDbConnectionConfig();
+
+  if (
+    code === 'ECONNREFUSED' ||
+    code === 'ENOTFOUND' ||
+    code === 'ETIMEDOUT' ||
+    code === 'ECONNRESET' ||
+    code === 'PROTOCOL_CONNECTION_LOST'
+  ) {
+    if (process.env.VERCEL && !cfg.isConfiguredForRemote) {
+      return {
+        status: 503,
+        code,
+        message:
+          'MySQL database is not configured on Vercel (currently pointing to localhost). Set DATABASE_URL or DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME in Vercel Project Settings → Environment Variables and redeploy.',
+      };
+    }
+    return {
+      status: 503,
+      code,
+      message:
+        'Unable to connect to MySQL database. Verify DB_HOST/DATABASE_URL, firewall allowlist, and SSL settings.',
+    };
+  }
+
+  if (code === 'ER_ACCESS_DENIED_ERROR') {
+    return {
+      status: 503,
+      code,
+      message: 'MySQL authentication failed. Verify DB_USER and DB_PASSWORD environment variables.',
+    };
+  }
+
+  if (code === 'ER_BAD_DB_ERROR') {
+    return {
+      status: 503,
+      code,
+      message: `MySQL database "${cfg.database}" does not exist. Create it and import database/schema.sql.`,
+    };
+  }
+
+  if (code === 'ER_NO_SUCH_TABLE') {
+    return {
+      status: 503,
+      code,
+      message:
+        'Database tables are missing. Import database/schema.sql and database/seed.sql into your MySQL database.',
+    };
+  }
+
+  if (code === 'ER_SECURE_TRANSPORT_REQUIRED' || code === 'HANDSHAKE_NO_SSL_SUPPORT') {
+    return {
+      status: 503,
+      code,
+      message:
+        'MySQL SSL/TLS mismatch. Set DB_SSL=true (for cloud MySQL) or DB_SSL=false (for non-SSL servers).',
+    };
+  }
+
+  return {
+    status: 500,
+    code,
+    message: 'Database request failed. Check server logs or /api/health for diagnostics.',
+  };
 }
